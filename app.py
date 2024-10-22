@@ -1,0 +1,175 @@
+from flask import Flask, request, redirect, render_template, session, flash
+from datetime import datetime, timedelta
+import json
+import os
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
+
+app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'default_secret_key')  # Use the secret key from the environment
+
+DATA_FILE = 'urls.json'
+USERS_FILE = 'users.json'
+
+# Email configuration
+SENDAPI = os.environ.get('SENDGRID_API_KEY')  # SendGrid API key
+SENDEMAIL = os.environ.get('SENDGRID_EMAIL')  # Sender email
+
+# Load existing URLs
+def load_urls():
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, 'r') as file:
+            try:
+                return json.load(file)
+            except json.JSONDecodeError:
+                return {}
+    return {}
+
+# Save URLs to a JSON file
+def save_urls(url_mapping):
+    with open(DATA_FILE, 'w') as file:
+        json.dump(url_mapping, file)
+
+# Load existing users
+def load_users():
+    if os.path.exists(USERS_FILE):
+        with open(USERS_FILE, 'r') as file:
+            try:
+                return json.load(file)
+            except json.JSONDecodeError:
+                return {}
+    return {}
+
+# Save users to a JSON file
+def save_users(user_mapping):
+    with open(USERS_FILE, 'w') as file:
+        json.dump(user_mapping, file)
+
+# URL mapping storage
+url_mapping = load_urls()
+user_mapping = load_users()
+
+def send_email(subject, body, to_email):
+    message = Mail(
+        from_email=SENDEMAIL,
+        to_emails=to_email,
+        subject=subject,
+        plain_text_content=body
+    )
+    try:
+        sg = SendGridAPIClient(SENDAPI)
+        response = sg.send(message)
+        print(response.status_code)
+    except Exception as e:
+        print(f"Failed to send email: {str(e)}")
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/shorten', methods=['POST'])
+def shorten():
+    if 'username' not in session:
+        flash("You must be logged in to shorten URLs.")
+        return redirect('/login')
+    
+    original_url = request.form['url'].strip()
+    keyword = request.form['keyword'].strip()
+
+    # Add http if missing
+    if not (original_url.startswith("http://") or original_url.startswith("https://")):
+        original_url = "http://" + original_url
+
+    # Validate the URL (basic check)
+    if keyword in url_mapping:
+        flash("Keyword already exists. Choose another one.")
+        return redirect('/')
+
+    # Set expiration date to 4 months from now
+    expiration_date = (datetime.now() + timedelta(days=120)).isoformat()
+
+    url_mapping[keyword] = {
+        'original_url': original_url,
+        'expiration_date': expiration_date,
+        'username': session['username']
+    }
+    save_urls(url_mapping)
+
+    return render_template('index.html', short_url=f"http://127.0.0.1:5000/{keyword}")
+
+@app.route('/<keyword>')
+def redirect_to_url(keyword):
+    entry = url_mapping.get(keyword)
+    if entry:
+        expiration_date = datetime.fromisoformat(entry['expiration_date'])
+        if datetime.now() < expiration_date:
+            return redirect(entry['original_url'])  # Redirect to the actual URL
+        else:
+            return "This link has expired.", 404
+    return "URL not found.", 404
+
+@app.route('/contact', methods=['GET', 'POST'])
+def contact():
+    if request.method == 'POST':
+        name = request.form['name']
+        email = request.form['email']
+        message = request.form['message']
+
+        # Prepare email content
+        subject = "New Contact Form Submission"
+        email_body = f"Name: {name}\nEmail: {email}\nMessage: {message}"
+
+        # Send email
+        try:
+            send_email(subject, email_body, SENDEMAIL)  # Your email to receive submissions
+            flash("Your message has been sent! We'll get back to you soon.")
+        except Exception as e:
+            flash(f"Failed to send message: {str(e)}")
+
+        return redirect('/contact')
+
+    return render_template('contact.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        if username in user_mapping:
+            flash("Username already exists. Please choose another.")
+        else:
+            user_mapping[username] = password
+            save_users(user_mapping)
+            flash("Registration successful! You can now log in.")
+            return redirect('/login')
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        if user_mapping.get(username) == password:
+            session['username'] = username
+            return redirect('/dashboard')
+        else:
+            flash("Invalid username or password.")
+    return render_template('login.html')
+
+@app.route('/dashboard')
+def dashboard():
+    if 'username' not in session:
+        flash("You must be logged in to view your dashboard.")
+        return redirect('/login')
+    
+    user_links = {k: v for k, v in url_mapping.items() if v['username'] == session['username']}
+    return render_template('dashboard.html', links=user_links)
+
+@app.route('/logout')
+def logout():
+    session.pop('username', None)
+    flash("You have been logged out.")
+    return redirect('/')
+
+if __name__ == '__main__':
+    app.run(debug=True)

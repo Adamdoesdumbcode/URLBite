@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: URLBite
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python app.py"
+    envVars:
+      - key: SECRET_KEY
+        value: "s3cr3t_k3y_4_render_#2024"  # Replace with your actual secret key
+      - key: SENDGRID_API_KEY
+        value: "your_actual_sendgrid_api_key"  # Replace with your actual SendGrid API key
+      - key: SENDGRID_EMAIL
+        value: "your_verified_email@example.com"  # Replace with your verified sender email
