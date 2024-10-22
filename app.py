@@ -89,7 +89,7 @@ def shorten():
     }
     save_urls(url_mapping)
 
-    return render_template('index.html', short_url=f"http://127.0.0.1:5000/{keyword}")
+    return render_template('index.html', short_url=f"https://urlbite.onrender.com/{keyword}")
 
 @app.route('/<keyword>')
 def redirect_to_url(keyword):
