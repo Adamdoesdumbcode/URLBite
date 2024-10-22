@@ -156,7 +156,7 @@ def dashboard():
         flash("You must be logged in to view your dashboard.")
         return redirect('/login')
     
-    user_links = {k: v for k, v in url_mapping.items() if v['username'] == session['username']}
+    user_links = {k: v for k, v in url_mapping.items() if v.get('username') == session['username']}
     return render_template('dashboard.html', links=user_links)
 
 @app.route('/logout')
@@ -166,5 +166,5 @@ def logout():
     return redirect('/')
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 6867))  # Use the PORT environment variable or default to 5000
+    port = int(os.environ.get("PORT", 6867))  # Use the PORT environment variable or default to 6867
     app.run(host='0.0.0.0', port=port, debug=True)
