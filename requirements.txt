@@ -1,3 +1,4 @@
-Flask==2.2.2
+Werkzeug==2.0.3
 sendgrid==6.9.1
 
+Flask>=2.1.0
