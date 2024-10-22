@@ -1,0 +1,20 @@
+{% extends "layout.html" %}
+
+{% block title %}Dashboard - URLBite{% endblock %}
+
+{% block content %}
+    <h2>Your Links</h2>
+    {% if links %}
+        <ul>
+            {% for keyword, entry in links.items() %}
+                <li>
+                    <strong>Keyword:</strong> {{ keyword }} - 
+                    <strong>Original URL:</strong> {{ entry.original_url }} - 
+                    <strong>Expires on:</strong> {{ entry.expiration_date }}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>You have no links yet.</p>
+    {% endif %}
+{% endblock %}
