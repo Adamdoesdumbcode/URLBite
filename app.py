@@ -2,18 +2,14 @@ from flask import Flask, request, redirect, render_template, session, flash
 from datetime import datetime, timedelta
 import json
 import os
-from sendgrid import SendGridAPIClient
+import sendgrid
 from sendgrid.helpers.mail import Mail
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'default_secret_key')  # Use the secret key from the environment
+app.secret_key = os.environ.get('SECRET_KEY', 'your_default_secret_key')  # Use the SECRET_KEY environment variable
 
 DATA_FILE = 'urls.json'
 USERS_FILE = 'users.json'
-
-# Email configuration
-SENDAPI = os.environ.get('SENDGRID_API_KEY')  # SendGrid API key
-SENDEMAIL = os.environ.get('SENDGRID_EMAIL')  # Sender email
 
 # Load existing URLs
 def load_urls():
@@ -45,23 +41,21 @@ def save_users(user_mapping):
     with open(USERS_FILE, 'w') as file:
         json.dump(user_mapping, file)
 
-# URL mapping storage
-url_mapping = load_urls()
-user_mapping = load_users()
-
+# Email sending function
 def send_email(subject, body, to_email):
+    sg = sendgrid.SendGridAPIClient(api_key=os.environ.get('SENDAPI'))
     message = Mail(
-        from_email=SENDEMAIL,
+        from_email=os.environ.get('SENDEMAIL'),
         to_emails=to_email,
         subject=subject,
         plain_text_content=body
     )
-    try:
-        sg = SendGridAPIClient(SENDAPI)
-        response = sg.send(message)
-        print(response.status_code)
-    except Exception as e:
-        print(f"Failed to send email: {str(e)}")
+    response = sg.send(message)
+    return response
+
+# URL mapping storage
+url_mapping = load_urls()
+user_mapping = load_users()
 
 @app.route('/')
 def index():
@@ -121,7 +115,7 @@ def contact():
 
         # Send email
         try:
-            send_email(subject, email_body, SENDEMAIL)  # Your email to receive submissions
+            send_email(subject, email_body, os.environ.get('SENDEMAIL'))  # Send to the specified email
             flash("Your message has been sent! We'll get back to you soon.")
         except Exception as e:
             flash(f"Failed to send message: {str(e)}")
@@ -172,4 +166,5 @@ def logout():
     return redirect('/')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 6867))  # Use the PORT environment variable or default to 5000
+    app.run(host='0.0.0.0', port=port, debug=True)
