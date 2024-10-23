@@ -1,7 +1,7 @@
 # URLBite
 A simple URL shortener website. Shortened links last for 4 months. By logging in you can see all the links you shortened and for how long they last.
 ## deployment
-none read the darn license!!! find the website at https://www.tinyurl.com/urlbite     OR      https://www.urlbite.onrender.com
+none read the darn license!!! find the website at https://www.tinyurl.com/urlbite     OR      http://www.urlbite.onrender.com
 # Preview
 "Proprietary Viewing License (PVL)
 Copyright (c) 2024 Adam Albustami
